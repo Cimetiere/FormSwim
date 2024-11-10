@@ -97,4 +97,4 @@ def create_app(data_string):
 
 # Pour exécuter l'application
 if __name__ == "__main__":
-    create_app("./FORM_2024-11-07_122351.csv")
+    create_app("./DATA/FORM_2024-11-07_122351.csv")
