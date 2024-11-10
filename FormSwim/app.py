@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+from pathlib import Path
 
 def load_and_process_data(data_string):
     # Sauter les 3 premières lignes et lire le CSV
@@ -97,4 +98,4 @@ def create_app(data_string):
 
 # Pour exécuter l'application
 if __name__ == "__main__":
-    create_app(".\DATA\FORM_2024-11-07_122351.csv")
+    create_app(Path(__file__).parent / "./DATA/FORM_2024-11-07_122351.csv")
