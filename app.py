@@ -176,4 +176,4 @@ def create_app(folder_path):
 
 # Exécution de l'application
 if __name__ == "__main__":
-    create_app("./DATA/")
+    create_app( Path(__file__).parent / "./DATA/")
