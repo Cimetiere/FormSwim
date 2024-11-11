@@ -110,6 +110,43 @@ def display_evolution_chart(df):
 # Fonction pour afficher la page KPI
 def display_kpi_page(df_latest,df_second_latest):
     st.header("Indicateurs Clés de Performance (KPI)")
+    # Graphique temps par 50m vs distance cumulée
+    st.subheader("Évolution du temps par 50m en fonction de la distance cumulée")
+    df_test = df_latest[df_latest['Dist (m)'] > 0].copy()
+    plot_line_chart(df_test, 'Cumul Dist (m)', 'Seconds_per_50m', 'Strk', 
+                    "Temps par 50m vs Distance cumulée",
+                    labels={'Cumul Dist (m)': 'Distance cumulée (m)', 'Seconds_per_50m': 'Temps par 50m (secondes)', 'Strk': 'Style de nage'})
+
+    # Analyse par style de nage
+    st.subheader("Analyse par style de nage")
+    style_stats = df_latest.groupby('Strk').agg({
+        'Dist (m)': 'sum',
+        'Seconds_per_50m': 'mean',
+        'SWOLF': 'mean',
+        'Strk Count': 'mean'
+    }).round(2)
+    st.dataframe(style_stats)
+
+    plot_box_chart(df_latest[df_latest['SWOLF'] > 0], 'Strk', 'SWOLF', "Distribution des SWOLF par style")
+
+    # Évolution de la fréquence cardiaque
+    st.subheader("Évolution de la fréquence cardiaque")
+    fig_hr = px.line(df_latest[df_latest['Avg BPM (moving)'] > 0], 
+                     x='Cumul Dist (m)',
+                     y=['Avg BPM (moving)', 'Max BPM'],
+                     title="Évolution de la FC pendant la session")
+    st.plotly_chart(fig_hr, use_container_width=True)
+
+    # Analyse des temps de repos
+    st.subheader("Analyse des temps de repos")
+    rest_times = df_latest['Rest Time'].apply(lambda x: 
+        sum(float(part) * 60**i for i, part in enumerate(reversed(str(x).split(':')))) if pd.notna(x) else None)
+
+    fig_rest = px.histogram(rest_times[rest_times!=0],
+                           title="Distribution des temps de repos",
+                                  x ='Rest Time' , nbins=10)
+    
+    st.plotly_chart(fig_rest, use_container_width=True)
 
     # KPIs pour la dernière session
     col1, col2, col3, col4 = st.columns(4)
