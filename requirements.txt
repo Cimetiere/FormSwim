@@ -5,3 +5,4 @@ plotly
 datetime
 streamlit_option_menu
 regex
+pathlib
