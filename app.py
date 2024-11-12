@@ -71,7 +71,7 @@ def plot_line_chart(df, x_col, y_col, color_col, title, labels):
             size=df['Rest Time (s)'],  # Taille des points basée sur 'Rest Time (s)'
             sizemode='diameter',           # Mode de taille (vous pouvez ajuster avec 'diameter' si besoin)
             sizeref=max(df['Rest Time (s)']) / 20,  # Facteur de normalisation
-            color=df['Rest Time (s)'] # Coloration en fonction de 'Rest Time (s)' aussi si souhaité
+            color='white' # Coloration en fonction de 'Rest Time (s)' aussi si souhaité
         ),
         text=df['Rest Time (s)'],        # Texte d'annotation avec 'Rest Time (s)' sur chaque point
         textposition="top center"        # Position du texte d'annotation
@@ -130,11 +130,11 @@ def display_kpi_page(df_latest,df_second_latest):
     rest_time_second_latest = df_second_latest['Rest Time (s)'].sum()
     rest_time_second_latest_count = df_second_latest[df_second_latest['Rest Time (s)'] > 0.0]['Rest Time (s)'].count()
     rest_time_latest_count = df_latest[df_latest['Rest Time (s)'] > 0.0]['Rest Time (s)'].count()
+    strk_second_latest = df_second_latest.groupby('Strk',as_index=False).agg({'Strk Count': 'mean'}).round(2)
+    strk_latest = df_latest.groupby('Strk',as_index=False).agg({'Strk Count': 'mean'}).round(2)
 
 
-
-
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 
     with col1:
         st.metric("Distance Totale", df_latest['Dist (m)'].sum(),f"{df_latest['Dist (m)'].sum() - df_second_latest['Dist (m)'].sum()}m")
@@ -148,6 +148,8 @@ def display_kpi_page(df_latest,df_second_latest):
         st.metric("Temps de Repos", f"{rest_time_latest:.0f}",f"{rest_time_latest - rest_time_second_latest:.0f} s",delta_color ="inverse")
     with col6:
         st.metric("Nombre de Repos", rest_time_latest_count,f"{rest_time_latest_count - rest_time_second_latest_count:.0f}",delta_color ="inverse")
+    with col7:
+        st.metric("Nombre de Stroke", strk_latest[strk_latest['Strk'] == 'FR']['Strk Count'][0],f"{strk_latest[strk_latest['Strk'] == 'FR']['Strk Count'][0] - strk_second_latest[strk_second_latest['Strk'] == 'FR']['Strk Count'][1]:.0f}",delta_color ="inverse")
 
 
     # Graphique temps par 50m vs distance cumulée
