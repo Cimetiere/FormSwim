@@ -64,8 +64,18 @@ def calculate_mean(df, group_by_cols, mean_cols):
 
 # Fonction pour afficher un graphique de type line plot
 def plot_line_chart(df, x_col, y_col, color_col, title, labels):
-    fig1 = px.line(df, x=x_col, y=y_col, color=color_col, title=title, labels=labels)
+    fig1 = px.line(df, x=x_col, y=y_col, color=color_col, title=title, labels=labels,markers=True,hover_data={'Rest Time (s)': True,'Strk':False,'Cumul Dist (m)':True,'Seconds_per_50m':False})
     fig1.update_traces(mode='lines+markers')
+    fig1.update_traces(
+        marker=dict(
+            size=df['Rest Time (s)'],  # Taille des points basée sur 'Rest Time (s)'
+            sizemode='diameter',           # Mode de taille (vous pouvez ajuster avec 'diameter' si besoin)
+            sizeref=max(df['Rest Time (s)']) / 20,  # Facteur de normalisation
+            color=df['Rest Time (s)'] # Coloration en fonction de 'Rest Time (s)' aussi si souhaité
+        ),
+        text=df['Rest Time (s)'],        # Texte d'annotation avec 'Rest Time (s)' sur chaque point
+        textposition="top center"        # Position du texte d'annotation
+    )
     st.plotly_chart(fig1, use_container_width=True)
 
 # Fonction pour afficher un graphique de type box plot
@@ -104,7 +114,8 @@ def display_evolution_chart(df):
                     labels={
                         'Cumul Dist (m)': 'Distance cumulée (m)',
                         'Seconds_per_50m': 'Temps par 50m (secondes)',
-                        'Strk': 'Style de nage'
+                        'Strk': 'Style de nage',
+                        'Rest Time (s)': 'Temps de repos (s)'
                     })
 
 # Fonction pour afficher la page KPI
@@ -128,27 +139,32 @@ def display_kpi_page(df_latest,df_second_latest):
     with col1:
         st.metric("Distance Totale", df_latest['Dist (m)'].sum(),f"{df_latest['Dist (m)'].sum() - df_second_latest['Dist (m)'].sum()}m")
     with col2:
-        st.metric("BPM Moyenne", avg_hr_latest,f"{avg_hr_latest - avg_hr_second:.0f} bpm",delta_color ="inverse")
+        st.metric("BPM Moyenne", f"{avg_hr_latest:.0f}",f"{avg_hr_latest - avg_hr_second:.0f} bpm",delta_color ="inverse")
     with col3:
         st.metric("BPM Max",df_latest['Max BPM'].max(), f"{df_latest['Max BPM'].max() - df_second_latest['Max BPM'].max()} bpm",delta_color ="inverse")
     with col4:
-        st.metric("SWOLF", avg_swolf_latest,f"{avg_swolf_latest - avg_swolf_second:.1f}",delta_color ="inverse")
+        st.metric("SWOLF", f"{avg_swolf_latest:.0f}",f"{avg_swolf_latest - avg_swolf_second:.1f}",delta_color ="inverse")
     with col5:
-        st.metric("Temps de Repos", rest_time_latest,f"{rest_time_latest - rest_time_second_latest:.1f} s",delta_color ="inverse")
+        st.metric("Temps de Repos", f"{rest_time_latest:.0f}",f"{rest_time_latest - rest_time_second_latest:.0f} s",delta_color ="inverse")
     with col6:
-        st.metric("Nombre de Repos", rest_time_latest_count,f"{rest_time_latest_count - rest_time_second_latest_count:.1f}",delta_color ="inverse")
+        st.metric("Nombre de Repos", rest_time_latest_count,f"{rest_time_latest_count - rest_time_second_latest_count:.0f}",delta_color ="inverse")
 
 
     # Graphique temps par 50m vs distance cumulée
     st.subheader("Évolution du temps par 50m en fonction de la distance cumulée")
-    df_test = df_latest[df_latest['Dist (m)'] > 0].copy()
+    df_test = df_latest.copy()
+    df_test[['Rest Time (s)']]  = df_test[['Rest Time (s)']].shift(-1)
+    df_test = df_test.fillna(0)
+    df_test = df_test[df_test['Strk'] != 'REST']
+    
     plot_line_chart(df_test, 'Cumul Dist (m)', 'Seconds_per_50m', 'Strk', 
                     "Temps par 50m vs Distance cumulée",
                     labels={'Cumul Dist (m)': 'Distance cumulée (m)', 'Seconds_per_50m': 'Temps par 50m (secondes)', 'Strk': 'Style de nage'})
 
     # Analyse par style de nage
     st.subheader("Analyse par style de nage")
-    style_stats = df_latest.groupby('Strk').agg({
+    df_latest_test = df_latest[df_latest['Dist (m)'] > 0].copy()
+    style_stats = df_latest_test.groupby('Strk').agg({
         'Dist (m)': 'sum',
         'Seconds_per_50m': 'mean',
         'SWOLF': 'mean',
@@ -178,63 +194,6 @@ def display_kpi_page(df_latest,df_second_latest):
     st.plotly_chart(fig_rest3, use_container_width=True)
 
   
-    # Graphique temps par 50m vs distance cumulée
-    st.subheader("Évolution du temps par 50m en fonction de la distance cumulée")
-    fig22 = px.line(df_latest[df_latest['Rest Time (s)'] == 0], 
-                  x='Cumul Dist (m)', 
-                  y='Seconds_per_50m',
-                  color='Strk',
-                  title="Temps par 50m vs Distance cumulée",
-                  labels={
-                      'Cumul Dist (m)': 'Distance cumulée (m)',
-                      'Seconds_per_50m': 'Temps par 50m (secondes)',
-                      'Strk': 'Style de nage'
-                  })
-    fig22.update_traces(mode='lines+markers')
-    st.plotly_chart(fig22, use_container_width=True)
-    
-    # Analyse par style de nage
-    st.subheader("Analyse par style de nage")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        style_stats = df_latest[df_latest['Rest Time (s)'] == 0].groupby('Strk').agg({
-            'Dist (m)': 'sum',
-            'Seconds_per_50m': 'mean',
-            'SWOLF': 'mean',
-            'Strk Count': 'mean'
-        }).round(2)
-        
-        st.dataframe(style_stats)
-    
-    with col2:
-        # Distribution des SWOLF par style
-        fig_swolf = px.box(df_latest[df_latest['SWOLF'] > 0], 
-                          x='Strk', 
-                          y='SWOLF',
-                          title="Distribution des SWOLF par style")
-        st.plotly_chart(fig_swolf)
-    
-    # Évolution de la fréquence cardiaque
-    st.subheader("Évolution de la fréquence cardiaque")
-    fig_hr = px.line(df_latest[df_latest['Avg BPM (moving)'] > 0], 
-                     x='Cumul Dist (m)',
-                     y=['Avg BPM (moving)', 'Max BPM'],
-                     title="Évolution de la FC pendant la session")
-    st.plotly_chart(fig_hr, use_container_width=True)
-    
-    # Analyse des temps de repos
-    st.subheader("Analyse des temps de repos")
-
-    rest_times = df_latest['Rest Time'].apply(lambda x: 
-        sum(float(x) * 60**i for i, x in enumerate(reversed(str(x).split(':')))))
-    
-    fig_rest2 = px.histogram(rest_times,
-                           title="Distribution des temps de repos",
-                           labels={'value': 'Temps de repos (secondes)',
-                                  'count': 'Fréquence'})
-    st.plotly_chart(fig_rest2, use_container_width=True)
-
 
 
 # Créer l'application
