@@ -111,6 +111,65 @@ def display_evolution_chart(df):
 def display_kpi_page(df_latest,df_second_latest):
     st.header("Indicateurs Clés de Performance (KPI)")
 
+  
+    # Graphique temps par 50m vs distance cumulée
+    st.subheader("Évolution du temps par 50m en fonction de la distance cumulée")
+    fig = px.line(df_latest[df_latest['Rest Time (s)'] == 0], 
+                  x='Cumul Dist (m)', 
+                  y='Seconds_per_50m',
+                  color='Strk',
+                  title="Temps par 50m vs Distance cumulée",
+                  labels={
+                      'Cumul Dist (m)': 'Distance cumulée (m)',
+                      'Seconds_per_50m': 'Temps par 50m (secondes)',
+                      'Strk': 'Style de nage'
+                  })
+    fig.update_traces(mode='lines+markers')
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Analyse par style de nage
+    st.subheader("Analyse par style de nage")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        style_stats = df_latest[df_latest['Rest Time (s)'] == 0].groupby('Strk').agg({
+            'Dist (m)': 'sum',
+            'Seconds_per_50m': 'mean',
+            'SWOLF': 'mean',
+            'Strk Count': 'mean'
+        }).round(2)
+        
+        st.dataframe(style_stats)
+    
+    with col2:
+        # Distribution des SWOLF par style
+        fig_swolf = px.box(df_latest[df_latest['SWOLF'] > 0], 
+                          x='Strk', 
+                          y='SWOLF',
+                          title="Distribution des SWOLF par style")
+        st.plotly_chart(fig_swolf)
+    
+    # Évolution de la fréquence cardiaque
+    st.subheader("Évolution de la fréquence cardiaque")
+    fig_hr = px.line(df_latest[df_latest['Avg BPM (moving)'] > 0], 
+                     x='Cumul Dist (m)',
+                     y=['Avg BPM (moving)', 'Max BPM'],
+                     title="Évolution de la FC pendant la session")
+    st.plotly_chart(fig_hr, use_container_width=True)
+    
+    # Analyse des temps de repos
+    st.subheader("Analyse des temps de repos")
+
+    rest_times = df_latest['Rest Time'].apply(lambda x: 
+        sum(float(x) * 60**i for i, x in enumerate(reversed(str(x).split(':')))))
+    
+    fig_rest = px.histogram(rest_times,
+                           title="Distribution des temps de repos",
+                           labels={'value': 'Temps de repos (secondes)',
+                                  'count': 'Fréquence'})
+    st.plotly_chart(fig_rest, use_container_width=True)
+
+
     # KPIs pour la dernière session
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -153,14 +212,20 @@ def display_kpi_page(df_latest,df_second_latest):
 
 # Créer l'application
 def create_app(folder_path):
-    st.set_page_config(page_title="Analyse Natation", layout="wide")
-    st.title("Analyse de Session de Natation")
-
+    
+    st.set_page_config(page_title="KPI'S FormSwim", layout="wide",initial_sidebar_state="expanded")
     # Menu de navigation
-    with st.sidebar:
-        selected = option_menu("Menu", ["Home", "All Sessions", "Latest's Session"],
-                               icons=["house", "bar-chart-line-fill", "tsunami"],
-                               menu_icon="menu", default_index=0)
+    selected = option_menu(
+    menu_title="Menu",
+    options=["Home", "All Sessions", "Latest's Session"],
+    icons=["house", "bar-chart-line-fill", "tsunami"],
+    menu_icon="menu",
+    default_index=0,
+    orientation="horizontal"
+    )
+
+    
+    st.title("Analyse de Session de Natation")
 
     # Charger et traiter les données
     df_all = combine_csv_files(folder_path)
