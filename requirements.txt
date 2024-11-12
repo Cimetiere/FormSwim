@@ -4,4 +4,5 @@ numpy
 plotly
 datetime
 streamlit_option_menu
-re
+regex
+pathlib
