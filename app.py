@@ -64,14 +64,14 @@ def calculate_mean(df, group_by_cols, mean_cols):
 
 # Fonction pour afficher un graphique de type line plot
 def plot_line_chart(df, x_col, y_col, color_col, title, labels):
-    fig = px.line(df, x=x_col, y=y_col, color=color_col, title=title, labels=labels)
-    fig.update_traces(mode='lines+markers')
-    st.plotly_chart(fig, use_container_width=True)
+    fig1 = px.line(df, x=x_col, y=y_col, color=color_col, title=title, labels=labels)
+    fig1.update_traces(mode='lines+markers')
+    st.plotly_chart(fig1, use_container_width=True)
 
 # Fonction pour afficher un graphique de type box plot
 def plot_box_chart(df, x_col, y_col, title):
-    fig = px.box(df, x=x_col, y=y_col, title=title)
-    st.plotly_chart(fig, use_container_width=True)
+    fig2 = px.box(df, x=x_col, y=y_col, title=title)
+    st.plotly_chart(fig2, use_container_width=True)
 
 # Fonction pour afficher les métriques de performance
 def display_kpi_metrics(df):
@@ -109,7 +109,36 @@ def display_evolution_chart(df):
 
 # Fonction pour afficher la page KPI
 def display_kpi_page(df_latest,df_second_latest):
-    st.header("Indicateurs Clés de Performance (KPI)")
+
+    
+    avg_hr_latest = df_latest[df_latest['Avg BPM (moving)'] > 0]['Avg BPM (moving)'].mean()
+    avg_swolf_latest = df_latest[df_latest['SWOLF'] > 0]['SWOLF'].mean()
+    rest_time_latest = df_latest['Rest Time (s)'].sum()
+    avg_hr_second = df_second_latest[df_second_latest['Avg BPM (moving)'] > 0]['Avg BPM (moving)'].mean()
+    avg_swolf_second = df_second_latest[df_second_latest['SWOLF'] > 0]['SWOLF'].mean()
+    rest_time_second_latest = df_second_latest['Rest Time (s)'].sum()
+    rest_time_second_latest_count = df_second_latest[df_second_latest['Rest Time (s)'] > 0.0]['Rest Time (s)'].count()
+    rest_time_latest_count = df_latest[df_latest['Rest Time (s)'] > 0.0]['Rest Time (s)'].count()
+
+
+
+
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
+
+    with col1:
+        st.metric("Distance Totale", df_latest['Dist (m)'].sum(),f"{df_latest['Dist (m)'].sum() - df_second_latest['Dist (m)'].sum()}m")
+    with col2:
+        st.metric("BPM Moyenne", avg_hr_latest,f"{avg_hr_latest - avg_hr_second:.0f} bpm",delta_color ="inverse")
+    with col3:
+        st.metric("BPM Max",df_latest['Max BPM'].max(), f"{df_latest['Max BPM'].max() - df_second_latest['Max BPM'].max()} bpm",delta_color ="inverse")
+    with col4:
+        st.metric("SWOLF", avg_swolf_latest,f"{avg_swolf_latest - avg_swolf_second:.1f}",delta_color ="inverse")
+    with col5:
+        st.metric("Temps de Repos", rest_time_latest,f"{rest_time_latest - rest_time_second_latest:.1f} s",delta_color ="inverse")
+    with col6:
+        st.metric("Nombre de Repos", rest_time_latest_count,f"{rest_time_latest_count - rest_time_second_latest_count:.1f}",delta_color ="inverse")
+
+
     # Graphique temps par 50m vs distance cumulée
     st.subheader("Évolution du temps par 50m en fonction de la distance cumulée")
     df_test = df_latest[df_latest['Dist (m)'] > 0].copy()
@@ -142,16 +171,16 @@ def display_kpi_page(df_latest,df_second_latest):
     rest_times = df_latest['Rest Time'].apply(lambda x: 
         sum(float(part) * 60**i for i, part in enumerate(reversed(str(x).split(':')))) if pd.notna(x) else None)
 
-    fig_rest = px.histogram(rest_times[rest_times!=0],
+    fig_rest3 = px.histogram(rest_times[rest_times!=0],
                            title="Distribution des temps de repos",
                                   x ='Rest Time' , nbins=10)
     
-    st.plotly_chart(fig_rest, use_container_width=True)
+    st.plotly_chart(fig_rest3, use_container_width=True)
 
   
     # Graphique temps par 50m vs distance cumulée
     st.subheader("Évolution du temps par 50m en fonction de la distance cumulée")
-    fig = px.line(df_latest[df_latest['Rest Time (s)'] == 0], 
+    fig22 = px.line(df_latest[df_latest['Rest Time (s)'] == 0], 
                   x='Cumul Dist (m)', 
                   y='Seconds_per_50m',
                   color='Strk',
@@ -161,8 +190,8 @@ def display_kpi_page(df_latest,df_second_latest):
                       'Seconds_per_50m': 'Temps par 50m (secondes)',
                       'Strk': 'Style de nage'
                   })
-    fig.update_traces(mode='lines+markers')
-    st.plotly_chart(fig, use_container_width=True)
+    fig22.update_traces(mode='lines+markers')
+    st.plotly_chart(fig22, use_container_width=True)
     
     # Analyse par style de nage
     st.subheader("Analyse par style de nage")
@@ -200,50 +229,11 @@ def display_kpi_page(df_latest,df_second_latest):
     rest_times = df_latest['Rest Time'].apply(lambda x: 
         sum(float(x) * 60**i for i, x in enumerate(reversed(str(x).split(':')))))
     
-    fig_rest = px.histogram(rest_times,
+    fig_rest2 = px.histogram(rest_times,
                            title="Distribution des temps de repos",
                            labels={'value': 'Temps de repos (secondes)',
                                   'count': 'Fréquence'})
-    st.plotly_chart(fig_rest, use_container_width=True)
-
-
-    # KPIs pour la dernière session
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.subheader("Dernière Session")
-        st.metric("Distance Totale", f"{df_latest['Dist (m)'].sum()}m")
-        avg_hr_latest = df_latest[df_latest['Avg BPM (moving)'] > 0]['Avg BPM (moving)'].mean()
-        st.metric("FC Moyenne", f"{avg_hr_latest:.0f} bpm")
-        st.metric("FC Max", f"{df_latest['Max BPM'].max()} bpm")
-        avg_swolf_latest = df_latest[df_latest['SWOLF'] > 0]['SWOLF'].mean()
-        st.metric("SWOLF Moyen", f"{avg_swolf_latest:.1f}")
-
-    # Calcul du temps total de repos pour la dernière session
-    rest_time_latest = df_latest['Rest Time (s)'].sum()
-
-    # KPIs pour l'avant-dernière session (si disponible)
-    if df_second_latest is not None:
-        with col2:
-            st.subheader("Avant-dernière Session")
-            st.metric("Distance Totale", f"{df_second_latest['Dist (m)'].sum()}m")
-            avg_hr_second = df_second_latest[df_second_latest['Avg BPM (moving)'] > 0]['Avg BPM (moving)'].mean()
-            st.metric("FC Moyenne", f"{avg_hr_second:.0f} bpm")
-            st.metric("FC Max", f"{df_second_latest['Max BPM'].max()} bpm")
-            avg_swolf_second = df_second_latest[df_second_latest['SWOLF'] > 0]['SWOLF'].mean()
-            st.metric("SWOLF Moyen", f"{avg_swolf_second:.1f}")
-
-        # Calcul du temps total de repos pour l'avant-dernière session
-        rest_time_second_latest = df_second_latest['Rest Time (s)'].sum()
-        
-        # Comparaison des KPIs y compris le temps de repos
-        col3, col4 = st.columns(2)
-        with col3:
-            st.subheader("Comparaison des sessions")
-            st.metric("Différence Distance Totale", f"{df_latest['Dist (m)'].sum() - df_second_latest['Dist (m)'].sum()}m")
-            st.metric("Différence FC Moyenne", f"{avg_hr_latest - avg_hr_second:.0f} bpm")
-            st.metric("Différence FC Max", f"{df_latest['Max BPM'].max() - df_second_latest['Max BPM'].max()} bpm")
-            st.metric("Différence SWOLF", f"{avg_swolf_latest - avg_swolf_second:.1f}")
-            st.metric("Différence Temps de Repos", f"{rest_time_latest - rest_time_second_latest:.1f} secondes")
+    st.plotly_chart(fig_rest2, use_container_width=True)
 
 
 
@@ -262,7 +252,7 @@ def create_app(folder_path):
     )
 
     
-    st.title("Analyse de Session de Natation")
+  
 
     # Charger et traiter les données
     df_all = combine_csv_files(folder_path)
