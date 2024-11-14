@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from pathlib import Path
+import plotly.graph_objects as go
 from streamlit_option_menu import option_menu
 import re
 
@@ -104,19 +105,110 @@ def display_home_page():
 
 # Fonction pour afficher la page de visualisation de l'évolution du temps par distance cumulée
 def display_evolution_chart(df):
-    df = df[df['Dist (m)'] > 0].copy()
-    mean_df = calculate_mean(df, group_by_cols=['Strk', 'Cumul Dist (m)'], mean_cols=['Seconds_per_50m', 'Dist (m)'])
-    plot_line_chart(mean_df, 
-                    x_col='Cumul Dist (m)', 
-                    y_col='Seconds_per_50m', 
-                    color_col='Strk', 
-                    title="Temps par 50m vs Distance cumulée (moyenne)",
-                    labels={
-                        'Cumul Dist (m)': 'Distance cumulée (m)',
-                        'Seconds_per_50m': 'Temps par 50m (secondes)',
-                        'Strk': 'Style de nage',
-                        'Rest Time (s)': 'Temps de repos (s)'
-                    })
+    
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("Distance Totale", f"{df['Length (m)'].sum()} m")
+
+
+
+    # Graphique temps par 50m vs distance cumulée
+
+    df_test = df.copy()
+    df_test[['Rest Time (s)']]  = df_test[['Rest Time (s)']].shift(-1)
+    df_test = df_test.fillna(0)
+    df_test = df_test[df_test['Strk'] != 'REST']
+    df_test = df_test.groupby(['Cumul Dist (m)','Strk'], as_index=False)[['Seconds_per_50m','Rest Time (s)','Strk Count']].mean()
+
+    plot_line_chart(df_test, 'Cumul Dist (m)', 'Seconds_per_50m', 'Strk', 
+                    "Temps par 50m vs Distance cumulée",
+                    labels={'Cumul Dist (m)': 'Distance cumulée (m)', 'Seconds_per_50m': 'Temps par 50m (secondes)', 'Strk': 'Style de nage'})
+
+
+    fig = go.Figure()
+    
+    # Calculate whether strokes increased or decreased
+    for i in range(len(df_test) - 1):
+        current_strokes = df_test['Strk Count'][i]
+        next_strokes = df_test['Strk Count'][i + 1]
+        
+        # Determine color based on whether strokes increased or decreased
+        color = 'red' if next_strokes > current_strokes else 'green'
+        
+        # Add line segment
+        fig.add_trace(
+            go.Scatter(
+                x=df_test['Cumul Dist (m)'][i:i+2],
+                y=df_test['Strk Count'][i:i+2],
+                mode='lines',
+                line=dict(
+                    color=color,
+                    width=3
+                ),
+                showlegend=False,
+                hovertemplate=(
+                    'Cumul Dist (m): %{x}<br>'
+                    'Strk Count: %{y}<br>'
+                    f'Change: {"Increased" if color == "red" else "Decreased"}<br>'
+                    '<extra></extra>'
+                )
+            )
+        )
+    
+    # Add markers for each point
+    fig.add_trace(
+        go.Scatter(
+            x=df_test['Cumul Dist (m)'],
+            y=df_test['Strk Count'],
+            mode='markers',
+            marker=dict(
+                color='blue',
+                size=10
+            ),
+            name='Stroke Count',
+            hovertemplate=(
+                'Cumul Dist (m): %{x}<br>'
+                'Strk Count: %{y}<br>'
+                '<extra></extra>'
+            )
+        )
+    )
+    
+    # Update layout
+    fig.update_layout(
+        title='Stroke Count Analysis by Pool Length',
+        xaxis_title='Pool Length Number',
+        yaxis_title='Number of Strokes',
+        hovermode='closest',
+        height=600,
+    )
+    
+    # Add custom legend for color meaning
+    fig.add_trace(
+        go.Scatter(
+            x=[None],
+            y=[None],
+            mode='lines',
+            line=dict(color='red', width=3),
+            name='Strokes Increased'
+        )
+    )
+    
+    fig.add_trace(
+        go.Scatter(
+            x=[None],
+            y=[None],
+            mode='lines',
+            line=dict(color='green', width=3),
+            name='Strokes Decreased'
+        )
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+
+
 
 # Fonction pour afficher la page KPI
 def display_kpi_page(df_latest,df_second_latest):
@@ -194,6 +286,93 @@ def display_kpi_page(df_latest,df_second_latest):
                                   x ='Rest Time' , nbins=10)
     
     st.plotly_chart(fig_rest3, use_container_width=True)
+
+
+
+
+    fig = go.Figure()
+    
+    # Calculate whether strokes increased or decreased
+    
+    df_latest = df_latest[df_latest['Strk'] != 'REST']
+    df_latest.reset_index(inplace=True)
+
+    for i in range(len(df_latest) - 1):
+        current_strokes = df_latest['Strk Count'][i]
+        next_strokes = df_latest['Strk Count'][i + 1]
+        
+        # Determine color based on whether strokes increased or decreased
+        color = 'red' if next_strokes > current_strokes else 'green'
+        
+        # Add line segment
+        fig.add_trace(
+            go.Scatter(
+                x=df_latest['Cumul Dist (m)'][i:i+2],
+                y=df_latest['Strk Count'][i:i+2],
+                mode='lines',
+                line=dict(
+                    color=color,
+                    width=3
+                ),
+                showlegend=False,
+                hovertemplate=(
+                    'Cumul Dist (m): %{x}<br>'
+                    'Strk Count: %{y}<br>'
+                    f'Change: {"Increased" if color == "red" else "Decreased"}<br>'
+                    '<extra></extra>'
+                )
+            )
+        )
+    
+    # Add markers for each point
+    fig.add_trace(
+        go.Scatter(
+            x=df_latest['Cumul Dist (m)'],
+            y=df_latest['Strk Count'],
+            mode='markers',
+            marker=dict(
+                color='blue',
+                size=10
+            ),
+            name='Stroke Count',
+            hovertemplate=(
+                'Cumul Dist (m): %{x}<br>'
+                'Strk Count: %{y}<br>'
+                '<extra></extra>'
+            )
+        )
+    )
+    
+    # Update layout
+    fig.update_layout(
+        title='Stroke Count Analysis by Pool Length',
+        xaxis_title='Pool Length Number',
+        yaxis_title='Number of Strokes',
+        hovermode='closest',
+        height=600,
+    )
+    
+    # Add custom legend for color meaning
+    fig.add_trace(
+        go.Scatter(
+            x=[None],
+            y=[None],
+            mode='lines',
+            line=dict(color='red', width=3),
+            name='Strokes Increased'
+        )
+    )
+    
+    fig.add_trace(
+        go.Scatter(
+            x=[None],
+            y=[None],
+            mode='lines',
+            line=dict(color='green', width=3),
+            name='Strokes Decreased'
+        )
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
   
 
