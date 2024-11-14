@@ -111,7 +111,12 @@ def display_evolution_chart(df):
     with col1:
         st.metric("Distance Totale", f"{df['Length (m)'].sum()} m")
 
-
+    stroke_type = st.selectbox(
+        'Choix du type de nage',
+        options=['FR', 'BR'],
+        help="FR = Freestyle, BR = Breaststroke",
+        label_visibility="visible"
+    )
 
     # Graphique temps par 50m vs distance cumulée
 
@@ -120,14 +125,18 @@ def display_evolution_chart(df):
     df_test = df_test.fillna(0)
     df_test = df_test[df_test['Strk'] != 'REST']
     df_test = df_test.groupby(['Cumul Dist (m)','Strk'], as_index=False)[['Seconds_per_50m','Rest Time (s)','Strk Count']].mean()
-
+    df_test = df_test[df_test['Strk'] == stroke_type]
     plot_line_chart(df_test, 'Cumul Dist (m)', 'Seconds_per_50m', 'Strk', 
                     "Temps par 50m vs Distance cumulée",
                     labels={'Cumul Dist (m)': 'Distance cumulée (m)', 'Seconds_per_50m': 'Temps par 50m (secondes)', 'Strk': 'Style de nage'})
 
 
-    fig = go.Figure()
     
+ 
+
+    fig = go.Figure()
+    df_test = df_test[df_test['Strk'] == stroke_type]
+    df_test.reset_index(inplace=True)
     # Calculate whether strokes increased or decreased
     for i in range(len(df_test) - 1):
         current_strokes = df_test['Strk Count'][i]
@@ -255,51 +264,18 @@ def display_kpi_page(df_latest,df_second_latest):
                     "Temps par 50m vs Distance cumulée",
                     labels={'Cumul Dist (m)': 'Distance cumulée (m)', 'Seconds_per_50m': 'Temps par 50m (secondes)', 'Strk': 'Style de nage'})
 
-    # Analyse par style de nage
-    st.subheader("Analyse par style de nage")
-    df_latest_test = df_latest[df_latest['Dist (m)'] > 0].copy()
-    style_stats = df_latest_test.groupby('Strk').agg({
-        'Dist (m)': 'sum',
-        'Seconds_per_50m': 'mean',
-        'SWOLF': 'mean',
-        'Strk Count': 'mean'
-    }).round(2)
-    st.dataframe(style_stats)
-
-    plot_box_chart(df_latest[df_latest['SWOLF'] > 0], 'Strk', 'SWOLF', "Distribution des SWOLF par style")
-
-    # Évolution de la fréquence cardiaque
-    st.subheader("Évolution de la fréquence cardiaque")
-    fig_hr = px.line(df_latest[df_latest['Avg BPM (moving)'] > 0], 
-                     x='Cumul Dist (m)',
-                     y=['Avg BPM (moving)', 'Max BPM'],
-                     title="Évolution de la FC pendant la session")
-    st.plotly_chart(fig_hr, use_container_width=True)
-
-    # Analyse des temps de repos
-    st.subheader("Analyse des temps de repos")
-    rest_times = df_latest['Rest Time'].apply(lambda x: 
-        sum(float(part) * 60**i for i, part in enumerate(reversed(str(x).split(':')))) if pd.notna(x) else None)
-
-    fig_rest3 = px.histogram(rest_times[rest_times!=0],
-                           title="Distribution des temps de repos",
-                                  x ='Rest Time' , nbins=10)
-    
-    st.plotly_chart(fig_rest3, use_container_width=True)
-
-
 
 
     fig = go.Figure()
     
     # Calculate whether strokes increased or decreased
     
-    df_latest = df_latest[df_latest['Strk'] != 'REST']
-    df_latest.reset_index(inplace=True)
+    df_latest2 = df_latest2[df_latest2['Strk'] != 'REST']
+    df_latest2.reset_index(inplace=True)
 
-    for i in range(len(df_latest) - 1):
-        current_strokes = df_latest['Strk Count'][i]
-        next_strokes = df_latest['Strk Count'][i + 1]
+    for i in range(len(df_latest2) - 1):
+        current_strokes = df_latest2['Strk Count'][i]
+        next_strokes = df_latest2['Strk Count'][i + 1]
         
         # Determine color based on whether strokes increased or decreased
         color = 'red' if next_strokes > current_strokes else 'green'
@@ -307,8 +283,8 @@ def display_kpi_page(df_latest,df_second_latest):
         # Add line segment
         fig.add_trace(
             go.Scatter(
-                x=df_latest['Cumul Dist (m)'][i:i+2],
-                y=df_latest['Strk Count'][i:i+2],
+                x=df_latest2['Cumul Dist (m)'][i:i+2],
+                y=df_latest2['Strk Count'][i:i+2],
                 mode='lines',
                 line=dict(
                     color=color,
@@ -327,8 +303,8 @@ def display_kpi_page(df_latest,df_second_latest):
     # Add markers for each point
     fig.add_trace(
         go.Scatter(
-            x=df_latest['Cumul Dist (m)'],
-            y=df_latest['Strk Count'],
+            x=df_latest2['Cumul Dist (m)'],
+            y=df_latest2['Strk Count'],
             mode='markers',
             marker=dict(
                 color='blue',
@@ -373,6 +349,45 @@ def display_kpi_page(df_latest,df_second_latest):
         )
     )
     st.plotly_chart(fig, use_container_width=True)
+
+
+
+    # Analyse par style de nage
+    st.subheader("Analyse par style de nage")
+    df_latest_test = df_latest[df_latest['Dist (m)'] > 0].copy()
+    style_stats = df_latest_test.groupby('Strk').agg({
+        'Dist (m)': 'sum',
+        'Seconds_per_50m': 'mean',
+        'SWOLF': 'mean',
+        'Strk Count': 'mean'
+    }).round(2)
+    st.dataframe(style_stats)
+
+    plot_box_chart(df_latest[df_latest['SWOLF'] > 0], 'Strk', 'SWOLF', "Distribution des SWOLF par style")
+
+    # Évolution de la fréquence cardiaque
+    st.subheader("Évolution de la fréquence cardiaque")
+    fig_hr = px.line(df_latest[df_latest['Avg BPM (moving)'] > 0], 
+                     x='Cumul Dist (m)',
+                     y=['Avg BPM (moving)', 'Max BPM'],
+                     title="Évolution de la FC pendant la session")
+    st.plotly_chart(fig_hr, use_container_width=True)
+
+    # Analyse des temps de repos
+    st.subheader("Analyse des temps de repos")
+    rest_times = df_latest['Rest Time'].apply(lambda x: 
+        sum(float(part) * 60**i for i, part in enumerate(reversed(str(x).split(':')))) if pd.notna(x) else None)
+
+    fig_rest3 = px.histogram(rest_times[rest_times!=0],
+                           title="Distribution des temps de repos",
+                                  x ='Rest Time' , nbins=10)
+    
+    st.plotly_chart(fig_rest3, use_container_width=True)
+
+
+
+
+   
 
   
 
