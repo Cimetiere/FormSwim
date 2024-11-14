@@ -99,24 +99,65 @@ def display_kpi_metrics(df):
         st.metric("SWOLF Moyen", f"{avg_swolf:.1f}")
 
 # Fonction pour afficher la page d'accueil
-def display_home_page():
+def display_home_page(df_all,df_latest):
     st.header("Bienvenue sur l'outil d'analyse de sessions de natation")
     st.write("Utilisez le menu pour naviguer entre les pages.")
+
+    avg_hr_latest = df_all[df_all['Avg BPM (moving)'] > 0]['Avg BPM (moving)'].mean()
+    avg_swolf_latest = df_all[df_all['SWOLF'] > 0]['SWOLF'].mean()
+    rest_time_latest = df_all['Rest Time (s)'].sum()
+    avg_hr_second = df_latest[df_latest['Avg BPM (moving)'] > 0]['Avg BPM (moving)'].mean()
+    avg_swolf_second = df_latest[df_latest['SWOLF'] > 0]['SWOLF'].mean()
+    rest_time_second_latest = df_latest['Rest Time (s)'].sum()
+    rest_time_second_latest_count = df_latest[df_latest['Rest Time (s)'] > 0.0]['Rest Time (s)'].count()
+    rest_time_latest_count = df_all[df_all['Rest Time (s)'] > 0.0]['Rest Time (s)'].count()
+  
+
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    with col1:
+        st.metric("Distance Totale", f"{df_all['Dist (m)'].sum():,} m".replace(",", " "),f"{df_latest['Dist (m)'].sum():,} m".replace(",", " "))
+    with col2:
+        st.metric("BPM Moyenne", f"{avg_hr_latest:.0f}",f"{avg_hr_second:.0f} bpm",delta_color ="inverse")
+    with col3:
+        st.metric("BPM Max",df_all['Max BPM'].max(), f"{df_latest['Max BPM'].max()} bpm",delta_color ="inverse")
+    with col4:
+        st.metric("SWOLF", f"{avg_swolf_latest:.0f}",f"{avg_swolf_second:.1f}",delta_color ="inverse")
+    with col5:
+        st.metric("Temps de Repos", f"{rest_time_latest/ 60:.0f} min",f"{rest_time_second_latest/60:.0f} m",delta_color ="inverse")
+    with col6:
+        st.metric("Nombre de Repos", rest_time_latest_count,f"{rest_time_second_latest_count:.0f}",delta_color ="inverse")
+ 
 
 # Fonction pour afficher la page de visualisation de l'évolution du temps par distance cumulée
 def display_evolution_chart(df):
     
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.metric("Distance Totale", f"{df['Length (m)'].sum()} m")
-
     stroke_type = st.selectbox(
         'Choix du type de nage',
         options=['FR', 'BR'],
         help="FR = Freestyle, BR = Breaststroke",
         label_visibility="visible"
     )
+    
+
+    df_test2 = df.copy()
+    df_test2[['Rest Time (s)']]  = df_test2[['Rest Time (s)']].shift(-1)
+    
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
+
+    with col1:
+        st.metric("Distance Totale", f"{df[df['Strk'] == stroke_type]['Length (m)'].sum():,} m".replace(",", " "))
+    with col2:
+        st.metric("BPM Moyenne", f"{df[(df['Strk'] == stroke_type) & (df['Avg BPM (moving)'] > 0)]['Avg BPM (moving)'].mean():.0f}",delta_color ="inverse")
+    with col3:
+        st.metric("BPM Max", f"{df[(df['Strk'] == stroke_type) & (df['Avg BPM (moving)'] > 0)]['Avg BPM (moving)'].max():.0f}",delta_color ="inverse")
+    with col4:
+        st.metric("SWOLF", f"{df[(df['Strk'] == stroke_type) & (df['SWOLF'] > 0)]['SWOLF'].mean():.0f}",delta_color ="inverse")
+    with col5:
+        st.metric("Temps de repos", f"{df_test2[(df_test2['Strk'] == stroke_type) & (df_test2['Rest Time (s)'] > 0)]['Rest Time (s)'].mean():.0f} s",delta_color ="inverse")
+    with col6:
+        st.metric("Nombre de repos", f"{df_test2[(df_test2['Strk'] == stroke_type) & (df_test2['Rest Time (s)'] > 0)]['Rest Time (s)'].count():.0f}",delta_color ="inverse")
+    
+    
 
     # Graphique temps par 50m vs distance cumulée
 
@@ -223,35 +264,6 @@ def display_evolution_chart(df):
 def display_kpi_page(df_latest,df_second_latest):
 
     
-    avg_hr_latest = df_latest[df_latest['Avg BPM (moving)'] > 0]['Avg BPM (moving)'].mean()
-    avg_swolf_latest = df_latest[df_latest['SWOLF'] > 0]['SWOLF'].mean()
-    rest_time_latest = df_latest['Rest Time (s)'].sum()
-    avg_hr_second = df_second_latest[df_second_latest['Avg BPM (moving)'] > 0]['Avg BPM (moving)'].mean()
-    avg_swolf_second = df_second_latest[df_second_latest['SWOLF'] > 0]['SWOLF'].mean()
-    rest_time_second_latest = df_second_latest['Rest Time (s)'].sum()
-    rest_time_second_latest_count = df_second_latest[df_second_latest['Rest Time (s)'] > 0.0]['Rest Time (s)'].count()
-    rest_time_latest_count = df_latest[df_latest['Rest Time (s)'] > 0.0]['Rest Time (s)'].count()
-    strk_second_latest = df_second_latest.groupby('Strk',as_index=False).agg({'Strk Count': 'mean'}).round(2)
-    strk_latest = df_latest.groupby('Strk',as_index=False).agg({'Strk Count': 'mean'}).round(2)
-
-
-    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
-
-    with col1:
-        st.metric("Distance Totale", df_latest['Dist (m)'].sum(),f"{df_latest['Dist (m)'].sum() - df_second_latest['Dist (m)'].sum()}m")
-    with col2:
-        st.metric("BPM Moyenne", f"{avg_hr_latest:.0f}",f"{avg_hr_latest - avg_hr_second:.0f} bpm",delta_color ="inverse")
-    with col3:
-        st.metric("BPM Max",df_latest['Max BPM'].max(), f"{df_latest['Max BPM'].max() - df_second_latest['Max BPM'].max()} bpm",delta_color ="inverse")
-    with col4:
-        st.metric("SWOLF", f"{avg_swolf_latest:.0f}",f"{avg_swolf_latest - avg_swolf_second:.1f}",delta_color ="inverse")
-    with col5:
-        st.metric("Temps de Repos", f"{rest_time_latest:.0f}",f"{rest_time_latest - rest_time_second_latest:.0f} s",delta_color ="inverse")
-    with col6:
-        st.metric("Nombre de Repos", rest_time_latest_count,f"{rest_time_latest_count - rest_time_second_latest_count:.0f}",delta_color ="inverse")
-    with col7:
-        st.metric("Nombre de Stroke", strk_latest[strk_latest['Strk'] == 'FR']['Strk Count'][0],f"{strk_latest[strk_latest['Strk'] == 'FR']['Strk Count'][0] - strk_second_latest[strk_second_latest['Strk'] == 'FR']['Strk Count'][1]:.0f}",delta_color ="inverse")
-
     stroke_type = st.selectbox(
         'Choix du type de nage',
         options=df_latest['Strk'][df_latest['Strk'] != 'REST'].unique(),
@@ -421,7 +433,7 @@ def create_app(folder_path):
 
     # Gestion de la navigation entre les pages
     if selected == "Home":
-        display_home_page()
+        display_home_page(df_all,df_latest)
     elif selected == "All Sessions":
         display_evolution_chart(df_all)
     elif selected == "Latest's Session":
