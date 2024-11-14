@@ -252,13 +252,19 @@ def display_kpi_page(df_latest,df_second_latest):
     with col7:
         st.metric("Nombre de Stroke", strk_latest[strk_latest['Strk'] == 'FR']['Strk Count'][0],f"{strk_latest[strk_latest['Strk'] == 'FR']['Strk Count'][0] - strk_second_latest[strk_second_latest['Strk'] == 'FR']['Strk Count'][1]:.0f}",delta_color ="inverse")
 
+    stroke_type = st.selectbox(
+        'Choix du type de nage',
+        options=df_latest['Strk'][df_latest['Strk'] != 'REST'].unique(),
+        help="FR = Freestyle, BR = Breaststroke",
+        label_visibility="visible"
+    )
 
     # Graphique temps par 50m vs distance cumulée
     st.subheader("Évolution du temps par 50m en fonction de la distance cumulée")
     df_test = df_latest.copy()
     df_test[['Rest Time (s)']]  = df_test[['Rest Time (s)']].shift(-1)
     df_test = df_test.fillna(0)
-    df_test = df_test[df_test['Strk'] != 'REST']
+    df_test = df_test[df_test['Strk'] == stroke_type]
     
     plot_line_chart(df_test, 'Cumul Dist (m)', 'Seconds_per_50m', 'Strk', 
                     "Temps par 50m vs Distance cumulée",
@@ -270,7 +276,7 @@ def display_kpi_page(df_latest,df_second_latest):
     
     # Calculate whether strokes increased or decreased
     
-    df_latest2 = df_latest2[df_latest2['Strk'] != 'REST']
+    df_latest2 = df_latest[df_latest['Strk'] == stroke_type]
     df_latest2.reset_index(inplace=True)
 
     for i in range(len(df_latest2) - 1):
