@@ -5,6 +5,54 @@ from pathlib import Path
 import plotly.graph_objects as go
 from streamlit_option_menu import option_menu
 import re
+import os
+from github import Github
+import base64
+from datetime import datetime
+
+
+def initialize_github():
+    """Initialize GitHub connection using access token."""
+    # Get the access token from Streamlit secrets or environment variable
+    github_token = st.secrets["github_token"]
+    return Github(github_token)
+
+
+def upload_to_github(repo_name, file_path, file_content, commit_message):
+    """Upload a file to GitHub repository."""
+    try:
+        # Initialize GitHub
+        g = initialize_github()
+        
+        # Get repository
+        repo = g.get_user().get_repo(repo_name)
+        
+        # Encode content
+        content = base64.b64encode(file_content).decode()
+        
+        try:
+            # Try to get existing file
+            file = repo.get_contents(file_path)
+            # Update file if it exists
+            repo.update_file(
+                file_path,
+                commit_message,
+                content,
+                file.sha
+            )
+            return True, "File updated successfully!"
+        except:
+            # Create new file if it doesn't exist
+            repo.create_file(
+                file_path,
+                commit_message,
+                content
+            )
+            return True, "File created successfully!"
+            
+    except Exception as e:
+        return False, str(e)
+
 
 # Fonction pour charger et traiter un fichier CSV
 def load_csv(file_path):
@@ -100,6 +148,38 @@ def display_kpi_metrics(df):
 
 # Fonction pour afficher la page d'accueil
 def display_home_page(df_all,df_latest):
+
+    uploaded_file = st.file_uploader("Choose a file", type=['txt', 'pdf', 'png', 'jpg', 'csv'])
+
+    repo_name = "FormSwim"
+    folder_path = "DATA/"
+    if uploaded_file is not None:
+        # Display file details
+        st.write("File Details:")
+        st.write(f"Filename: {uploaded_file.name}")
+        st.write(f"File size: {uploaded_file.size} bytes")
+        
+        # Upload button
+        if st.button("Upload to GitHub"):
+            # Create file path
+
+            file_path = os.path.join(folder_path,uploaded_file.name)
+            
+            # Read file content
+            file_content = uploaded_file.read()
+            
+            # Commit message
+            commit_message = f"Upload {uploaded_file.name} via Streamlit"
+            
+            # Upload to GitHub
+            success, message = upload_to_github(repo_name, file_path, file_content, commit_message)
+            
+            if success:
+                st.success(message)
+            else:
+                st.error(f"Error uploading file: {message}")
+
+
     st.header("Bienvenue sur l'outil d'analyse de sessions de natation")
     st.write("Utilisez le menu pour naviguer entre les pages.")
 
