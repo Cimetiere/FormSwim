@@ -14,7 +14,7 @@ from datetime import datetime
 def initialize_github():
     """Initialize GitHub connection using access token."""
     # Get the access token from Streamlit secrets or environment variable
-    github_token = st.secrets["github_token"]
+    github_token = st.secrets["secret_key"]
     return Github(github_token)
 
 
@@ -148,7 +148,8 @@ def display_kpi_metrics(df):
 
 # Fonction pour afficher la page d'accueil
 def display_home_page(df_all,df_latest):
-
+    
+  
     uploaded_file = st.file_uploader("Choose a file", type=['txt', 'pdf', 'png', 'jpg', 'csv'])
 
     repo_name = "FormSwim"
