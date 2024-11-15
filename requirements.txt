@@ -6,3 +6,5 @@ datetime
 streamlit_option_menu
 regex
 pathlib
+PyGithub>=1.55.0
+github
